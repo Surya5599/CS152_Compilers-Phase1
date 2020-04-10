@@ -11,9 +11,7 @@ Use the `make` command to compile the lexical analyzer
 Use `make clean` before running `make`
 
 Use case 1:  `./lexer`
-
-then enter any strings
-
-Input file required
+[then enter any strings]
 
 Use case 2: `./lexer [filename]`
+[Input file required]
