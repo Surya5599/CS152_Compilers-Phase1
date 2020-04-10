@@ -1,8 +1,6 @@
 # PHASE 1: Lexical Analyzer Generation Using flex
 
-This lexical analyzer for a high-level source code language called "MINI-L"
-
-https://www.cs.ucr.edu/~amazl001/teaching/cs152/S20/webpages1/mini_l.html
+This lexical analyzer for a high-level source code language called "MINI-L". Documentation here: https://www.cs.ucr.edu/~amazl001/teaching/cs152/S20/webpages1/mini_l.html
 
 Must have flex in the system
 
