@@ -1,4 +1,4 @@
-#PHASE 1: Lexical Analyzer Generation Using flex#
+# PHASE 1: Lexical Analyzer Generation Using flex
 
 Must have flex in the system
 
