@@ -60,6 +60,7 @@ declarations: /*epsilon*/
 	      | declaration SEMICOLON declarations
 	      {printf("declarations->declaration SEMICOLON declarations\n");}
 	      | error SEMICOLON
+	      | declaration error
 	;
 
 declaration: identifier COLON INTEGER
@@ -80,7 +81,8 @@ statements: /*epsilon*/
 		  {printf("statements->epsilon\n");}
 	   |statement SEMICOLON statements
 	    {printf("statements -> statement SEMICOLON statements\n");}
-	   | error SEMICOLON	
+	   | error SEMICOLON
+	   | statement error	
 	  ;
 
 statement: var ASSIGN expression
