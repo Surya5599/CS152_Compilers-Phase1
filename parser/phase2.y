@@ -12,6 +12,8 @@ void yyerror(const char *msg);
 }
 
 //declaration
+
+%error-verbose
 %token FUNCTION
 %token BEGIN_PARAMS END_PARAMS
 %token BEGIN_LOCALS END_LOCALS
@@ -57,6 +59,7 @@ declarations: /*epsilon*/
 	      {printf("declarations->epsilon\n");}
 	      | declaration SEMICOLON declarations
 	      {printf("declarations->declaration SEMICOLON declarations\n");}
+	      | error SEMICOLON
 	;
 
 declaration: identifier COLON INTEGER
@@ -64,8 +67,8 @@ declaration: identifier COLON INTEGER
 	     | identifier COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
 	     {printf("declaration -> identifier COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER\n");}
 	     | identifier COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
-	     {printf("declaration -> identifier COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER\n");}
-	;
+	     {printf("declaration -> identifier COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER\n");}	
+;
 
 identifier: ident COMMA identifier
 	    {printf("identifier -> ident COMMA identifiers\n");}
@@ -77,7 +80,8 @@ statements: /*epsilon*/
 		  {printf("statements->epsilon\n");}
 	   |statement SEMICOLON statements
 	    {printf("statements -> statement SEMICOLON statements\n");}
-	;
+	   | error SEMICOLON	
+	  ;
 
 statement: var ASSIGN expression
 	   {printf("statement -> var ASSIGN expression\n");}
@@ -148,7 +152,7 @@ term: 	SUB var
 	| var
 	{printf("term -> var\n");}
 	| NUMBER
-	{printf("term -> NUMBER\n");}
+	{printf("term -> NUMBER %d\n", $1);}
 	| L_PAREN expression R_PAREN
 	{printf("term -> L_PAREN expression R_PAREN\n");}
 	| ident L_PAREN expressions R_PAREN
@@ -224,5 +228,4 @@ int main(int argc, char ** argv)
 
 void yyerror (const char * msg){
 	printf("Error in line %d %s\n", currLine, msg);
-	exit(0);
 }

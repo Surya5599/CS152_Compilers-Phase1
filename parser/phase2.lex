@@ -1,7 +1,7 @@
 %{
 #include "y.tab.h"
 	int currLine = 1;
-	int currPos = 1;
+	int currPos = 0;
 %}
 
 
@@ -64,9 +64,7 @@ INVALID2 {IDENTIFIER}{underscore}+
 "]"		{ currPos += yyleng; return R_SQUARE_BRACKET; }
 ":="		{ currPos += yyleng; return ASSIGN;}
 
-"="		{printf("Error at line %d: \":=\" expected\n", currLine); exit(0);}
-
-{DIGIT}+	{currPos += yyleng; return NUMBER;}
+{DIGIT}+	{currPos += yyleng; yylval.iVal=atoi(yytext); return NUMBER;}
 
 [ \t]+ 		{currPos += yyleng;}
 
@@ -79,6 +77,10 @@ INVALID2 {IDENTIFIER}{underscore}+
 
 {INVALID}	{printf("Error at line %d, column %d: identifier \"%s\" must begin with a letter\n" , currLine, currPos, yytext); exit(0);}
 {INVALID2}	{printf("Error at line %d, column %d: identifier \"%s\" cannot end with an underscore\n", currLine, currPos, yytext); exit(0);}
-.		{printf("Error at line %d, column %d: unrecognized symbol \"%s\"\n", currLine, currPos, yytext); exit(0);}
 
+
+%{
+/*		{printf("Error at line %d, column %d: unrecognized symbol \"%s\"\n", currLine, currPos, yytext); exit(0);}
+*/
+%}
 %%
