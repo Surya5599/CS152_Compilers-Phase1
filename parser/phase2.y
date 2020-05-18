@@ -22,16 +22,17 @@ void yyerror(const char *msg);
 %token IF THEN ENDIF ELSE WHILE DO FOR
 %token BEGINLOOP ENDLOOP CONTINUE READ WRITE
 %token TRUE FALSE RETURN
-%token R_SQUARE_BRACKET L_SQUARE_BRACKET
-%token R_PAREN L_PAREN
 %token COMMA COLON SEMICOLON
 
-%left SUB ADD
-%left MULT DIV
-%left MOD
-%left GTE LTE GT LT NEQ EQ
-%left AND OR ASSIGN
+%right ASSIGN
+%left OR
+%left AND
 %right NOT
+%left GTE LTE GT LT NEQ EQ
+%left SUB ADD
+%left MULT DIV MOD
+%left R_SQUARE_BRACKET L_SQUARE_BRACKET
+%left R_PAREN L_PAREN
 
 %token <cVal> IDENT
 %token <iVal> NUMBER
