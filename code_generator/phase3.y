@@ -4,7 +4,9 @@
 #include "string.h"
 #include <string>
 #include <map>
+#include <vector>
 #include <list>
+#include <iterator>
 #include <iostream>
 #include <stdbool.h>
 
@@ -16,18 +18,24 @@ void yyerror(const char *msg);
 char* returnVal(string);
 int yylex();
 bool no_error = true;
-map<string, int> symbol_table; // 0 is integer, 1 as array //2 = function name
+void addMap(string,int);
+bool checkMap(string,int);
+void printMap();
+
+std::map<string, int> symbol_table; // 0 is integer, 1 as array //2 = function name
 
 %}
+
 
 
 %union{
 	char* cVal;
 	int iVal;
 	char* str;
-	struct{
+	struct {
 		char* code;
-	} ids;
+		int numVar;
+	}ids;
 
 }
 
@@ -64,7 +72,9 @@ map<string, int> symbol_table; // 0 is integer, 1 as array //2 = function name
 
 %%
 prog_start: functions
-       	   {printf("%s",$1);}
+       	   {
+
+						 printf("%s",$1);}
 	;
 
 functions: /*epsilon*/
@@ -81,18 +91,22 @@ functions: /*epsilon*/
 function: FUNCTION ident SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY
        	  { string temp = "func ";
 					temp += $2;
+					addMap(string($2), 2);
 					temp += "\n";
 					temp += $5;
 					temp += $8;
 					temp += $11;
 					temp += "endfunc";
  				 	$$ = returnVal(temp);
+
 					//printf(c);
 					}
 	;
 
 ident:  IDENT
-		{$$ = strdup($1);}
+		{$$ = strdup($1);
+		}
+
   ;
 
 declarations: /*epsilon*/
@@ -101,42 +115,83 @@ declarations: /*epsilon*/
 				}
 	      | declaration SEMICOLON declarations
 	     	{ string temp = $1;
-					temp += "\n";
 					temp += $3;
 					$$ = returnVal(temp);
 				}
 	      | error {}
 	;
 
-declaration: identifier COLON INTEGER
-	     { string temp = ". ";
-				 temp += $1.code;
-				 $$ = returnVal(temp);
+declaration: identifier COLON INTEGER  //i,j,d,c : integer
+	     {
+				char* str = $1.code;
+				char *token = strtok(str, " ");
+				string temp;
+			    while (token != NULL)
+			    {
+							temp += ". ";
+							temp += token;
+							addMap(token,0);
+							temp += "\n";
+				      token = strtok(NULL, " ");
+			    }
+					$$ = returnVal(temp);
 		 		}
 	     | identifier COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
-	     {string temp = ". [] " + string($1.code) + ", " + to_string($5);
+	     {cout << $1.code << endl;
+				 char* str = $1.code;
+			 	char *token = strtok(str, " ");
+			 	string temp;
+				 while (token != NULL)
+				 {
+						 temp += ". [] ";
+						 temp += token;
+						 addMap(token,0);
+						 temp += ", ";
+						 temp += to_string($5);
+						 temp += "\n";
+						 token = strtok(NULL, " ");
+				 }
 				$$ = returnVal(temp);
 		 }
 	     | identifier COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
-	     {string temp = ". [][] " + string($1.code) + ", " + to_string($5) + ", " + to_string($8);
-			 	$$ = returnVal(temp);
+	     {
+				char* str = $1.code;
+			 char *token = strtok(str, " ");
+			 string temp;
+				while (token != NULL)
+				{
+						temp += ". [] ";
+						temp += token;
+						addMap(token,0);
+						temp += ", ";
+						temp += to_string($5);
+						temp += ", ";
+						temp += to_string($8);
+						temp += "\n";
+						token = strtok(NULL, " ");
+				}
+			 $$ = returnVal(temp);
 				}
 	;
 
 
 
-identifier: ident COMMA identifier
-			{string temp = $1;
-			temp += "\n";
-			temp += ". ";
-			temp +=  $3.code;
-			$$.code = returnVal(temp);
-		//	$$.id.push_back(string($1))
-		//	$$.id.push_back(string($3))
-			}
-	    | ident
-	    {$$.code = strdup($1);}
-	;
+
+	identifier: ident COMMA identifier
+				{string temp = $1;
+				$$.numVar = 1;
+				temp += " ";
+				temp +=  $3.code;
+				$$.numVar += $3.numVar;
+				$$.code = returnVal(temp);
+			//	$$.id.push_back(string($1))
+			//	$$.id.push_back(string($3))
+				}
+		    | ident
+		    {$$.code = strdup($1);
+					$$.numVar = 1;
+				}
+		;
 
 statements: /*epsilon*/
 		  {string temp = "";
@@ -321,6 +376,15 @@ int main(int argc, char ** argv)
    return 1;
 }
 
+bool checkMap(string name, int num){
+	if(symbol_table.find(name) != symbol_table.end()){
+			return true;
+	}
+	else{
+		return false;
+	}
+}
+
 void addMap(string name, int num){
 	if(symbol_table.find(name) != symbol_table.end()){
 		cout << "Exists already" << endl;
@@ -335,6 +399,15 @@ char * returnVal(string temp){
 	char* c = const_cast<char*>(temp.c_str());
 	return strdup(c);
 }
+
+
+void printMap(){
+	for(auto elem : symbol_table)
+	 {
+			std::cout << elem.first << " " << elem.second << "\n";
+	 }
+ }
+
 
 void yyerror (const char * msg){
 	printf("Error in line %d %s\n", currLine, msg);
