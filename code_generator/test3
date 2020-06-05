@@ -1,0 +1,29 @@
+function fibonacci;
+beginparams
+	k : integer;
+	p: integer;
+endparams
+beginlocals
+endlocals
+beginbody
+	while x > n beginloop
+		## x := (x+n / x) / 2;
+	endloop;
+endbody
+
+
+function main;
+beginparams
+	i, j, k : integer;
+	a, b : array[100]  of integer;
+	d, c : array[100][12]  of integer;
+endparams
+beginlocals
+	n : integer;
+	fib_n : integer;
+endlocals
+beginbody
+	read n;
+	fib_n := fibonacci(n);
+	write fib_n;
+endbody
