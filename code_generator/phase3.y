@@ -83,8 +83,8 @@ std::map<string, int> symbol_table; // 0 is integer, 1 as array //2 = function n
 %%
 prog_start: functions
        	   {
-
-						 printf("%s",$1);}
+						 printf("%s",$1);
+					 }
 	;
 
 functions: /*epsilon*/
@@ -93,7 +93,7 @@ functions: /*epsilon*/
 	 |function functions
        	   {
 						 string temp = $1;
-						 temp += "\n";
+						 temp += "\n\n";
 						 temp += $2;
 						 $$ = returnVal(temp);
 					 }
@@ -108,8 +108,6 @@ function: FUNCTION ident SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LO
 					temp += $11;
 					temp += "endfunc";
  				 	$$ = returnVal(temp);
-
-					//printf(c);
 					}
 	;
 
@@ -120,11 +118,13 @@ ident:  IDENT
   ;
 
 declarations: /*epsilon*/
-				{string temp = "";
+				{
+					string temp = "";
 					$$ = returnVal(temp);
 				}
 	      | declaration SEMICOLON declarations
-	     	{ string temp = $1;
+	     	{
+					string temp = $1;
 					temp += $3;
 					$$ = returnVal(temp);
 				}
@@ -180,7 +180,7 @@ declaration: identifier COLON INTEGER  //i,j,d,c : integer
 						temp += "\n";
 						token = strtok(NULL, " ");
 				}
-			 $$ = returnVal(temp);
+			 			$$ = returnVal(temp);
 				}
 	;
 
@@ -188,15 +188,17 @@ declaration: identifier COLON INTEGER  //i,j,d,c : integer
 
 
 	identifier: ident COMMA identifier
-				{string temp = $1;
-				$$.numVar = 1;
-				temp += " ";
-				temp +=  $3.code;
-				$$.numVar += $3.numVar;
-				$$.code = returnVal(temp);
+				{
+					string temp = $1;
+					$$.numVar = 1;
+					temp += " ";
+					temp +=  $3.code;
+					$$.numVar += $3.numVar;
+					$$.code = returnVal(temp);
 				}
 		    | ident
-		    {$$.code = strdup($1);
+		    {
+					$$.code = strdup($1);
 					$$.numVar = 1;
 				}
 		;
@@ -207,7 +209,6 @@ statements: /*epsilon*/
 			}
 	   |statement SEMICOLON statements
 	    { string temp = $1;
-			temp += "\n";
 			temp +=  $3;
 			$$ = returnVal(temp);
 			}
@@ -215,24 +216,39 @@ statements: /*epsilon*/
 	  ;
 
 statement: var ASSIGN expression
-	   {string temp =  $3.code;
-		 temp += "= ";
-		 temp+= $1;
-		 temp += ", ";
-		 temp += $3.variables;
-		 $$ = returnVal(temp);
-	 }
+		   {
+				 string temp =  $3.code;
+				 temp += "= ";
+				 temp+= $1;
+				 temp += ", ";
+				 temp += $3.variables;
+				 temp += "\n";
+				 $$ = returnVal(temp);
+		 	 }
 		 | IF bool_exp THEN statements ENDIF
-		 {}
+		 {
+			 string boolWork = $2.code;
+			 string boolVar = $2.variables;
+			 string state = $4;
+			 string temp = boolWork;
+			 string labelIF = makeLabel();
+			 temp += "?:= " + labelIF + ", " + boolVar + "\n";
+			 string labelEndIf = makeLabel();
+			 temp += ":= " + labelEndIf + "\n";
+			 temp += ": " + labelIF + "\n";
+			 temp += state;
+			 temp += ": " + labelEndIf + "\n";
+			 $$ = returnVal(temp);
+		 }
 	   | IF bool_exp THEN statements ELSE  statements ENDIF
 	   {}
 	   | WHILE bool_exp BEGINLOOP statements ENDLOOP
-	   { string whileLoop = makeLabel();
-			 string beginloop: makeLabel();
-			 string endloop: makeLabel();
+	   { //string whileLoop = makeLabel();
+			 //string beginloop: makeLabel();
+			 //string endloop: makeLabel();
 
 			 string temp = $2.code;
-			 temp += ":= " + whileLoop;
+			 //temp += ":= " + whileLoop;
 			 $$ = returnVal(temp);
 		 }
 	   | DO BEGINLOOP statements ENDLOOP WHILE bool_exp
@@ -243,146 +259,164 @@ statement: var ASSIGN expression
 		 {  //check if var is int or arr based on that print [] .
 		 string temp = ".< ";
 		 temp +=  $2;
+		 temp += "\n";
 		 $$ = returnVal(temp);
 		 }
 	   | WRITE vars
 	   {
 		 string temp = ".> ";
 		 temp +=  $2;
+		 temp += "\n";
 		 $$ = returnVal(temp);}
 	   | CONTINUE
 	   {}
 	   |
 	   RETURN expression
-	   {}
+	   {
+			 string tempVar = $2.variables;
+			 string temp = $2.code;
+			 temp += "ret " + tempVar + "\n";
+			 $$ = returnVal(temp);
+		 }
 	;
 
 vars: var COMMA vars
-	{}
-	|var
-	{ //cout << $1 << endl;
-		$$ = strdup($1);
-	}
+			{}
+			|var
+			{ //cout << $1 << endl;
+				$$ = strdup($1);
+			}
 	;
 
 var: ident
-	{
-		$$ = strdup($1);
-	}
-	| ident L_SQUARE_BRACKET expression R_SQUARE_BRACKET
-	{ }
-	| ident L_SQUARE_BRACKET expression R_SQUARE_BRACKET L_SQUARE_BRACKET expression R_SQUARE_BRACKET
-	{}
+		{
+			$$ = strdup($1);
+		}
+		| ident L_SQUARE_BRACKET expression R_SQUARE_BRACKET
+		{ }
+		| ident L_SQUARE_BRACKET expression R_SQUARE_BRACKET L_SQUARE_BRACKET expression R_SQUARE_BRACKET
+		{}
 ;
 
 expressions: expression COMMA expressions
-	     {}
+	     	{}
 	     | expression
-	     {$$.code = strdup($1.code);
- 			 	$$.variables = ($1.variables);
-			}
+		      {
+					  $$.code = strdup($1.code);
+		 			 	$$.variables = ($1.variables);
+			  	}
 	;
 
 expression: multi_expr
-	    {$$.code = strdup($1.code);
-		   $$.variables = ($1.variables);
+		    {
+				 $$.code = strdup($1.code);
+			   $$.variables = ($1.variables);
 				}
 	    | multi_expr ADD  expression
-      { string tempVar = makeTemps();
- 			 string temp = ($1.code);
- 			 temp += ($3.code);
- 			 temp += "+ " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
- 			 temp += "\n";
- 			 $$.code = returnVal(temp);
- 			 $$.variables = returnVal(tempVar);
-		 }
+	      {
+				 string tempVar = makeTemps();
+	 			 string temp = ($1.code);
+	 			 temp += ($3.code);
+				 temp += ". " + tempVar + "\n";
+	 			 temp += "+ " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
+	 			 temp += "\n";
+	 			 $$.code = returnVal(temp);
+	 			 $$.variables = returnVal(tempVar);
+			 }
 	    | multi_expr SUB  expression
-	    { string tempVar = makeTemps();
- 			 string temp = ($1.code);
- 			 temp += ($3.code);
- 			 temp += "- " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
- 			 temp += "\n";
- 			 $$.code = returnVal(temp);
- 			 $$.variables = returnVal(tempVar);
-		 }
+		    {
+				 string tempVar = makeTemps();
+	 			 string temp = ($1.code);
+	 			 temp += ($3.code);
+				 temp += ". " + tempVar + "\n";
+	 			 temp += "- " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
+	 			 temp += "\n";
+	 			 $$.code = returnVal(temp);
+	 			 $$.variables = returnVal(tempVar);
+			 }
 	 ;
 
 multi_expr: term
-	    {$$.code = strdup($1.code);
-			 $$.variables = ($1.variables);
-			}
+		    {
+				 $$.code = strdup($1.code);
+				 $$.variables = ($1.variables);
+				}
 	   | term MULT multi_expr
-	    { string tempVar = makeTemps();
- 			 string temp = ($1.code);
- 			 temp += ($3.code);
- 			 temp += "* " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
- 			 temp += "\n";
- 			 $$.code = returnVal(temp);
- 			 $$.variables = returnVal(tempVar);
-		 }
+		    {
+				 string tempVar = makeTemps();
+	 			 string temp = ($1.code);
+	 			 temp += ($3.code);
+	 			 temp += "* " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
+	 			 temp += "\n";
+	 			 $$.code = returnVal(temp);
+	 			 $$.variables = returnVal(tempVar);
+			 }
 	   | term DIV multi_expr
-	   { string tempVar = makeTemps();
-			 string temp = ($1.code);
-			 temp += ($3.code);
-			 temp += "/ " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
-			 temp += "\n";
-			 $$.code = returnVal(temp);
-			 $$.variables = returnVal(tempVar);
-		 }
+		   {
+				 string tempVar = makeTemps();
+				 string temp = ($1.code);
+				 temp += ($3.code);
+				 temp += "/ " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
+				 temp += "\n";
+				 $$.code = returnVal(temp);
+				 $$.variables = returnVal(tempVar);
+			 }
 	   | term MOD multi_expr
-	   { string tempVar = makeTemps();
-			 string temp = ($1.code);
-			 temp += ($3.code);
-			 temp += "% " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
-			 temp += "\n";
-			 $$.code = returnVal(temp);
-			 $$.variables = returnVal(tempVar);
-		 }
+		   { string tempVar = makeTemps();
+				 string temp = ($1.code);
+				 temp += ($3.code);
+				 temp += "% " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
+				 temp += "\n";
+				 $$.code = returnVal(temp);
+				 $$.variables = returnVal(tempVar);
+			 }
 	;
 
-term: 	SUB var {}
-	| SUB NUMBER
+term: 	SUB var
 	{}
+	| SUB NUMBER
+	{  }
 	| SUB L_PAREN expression R_PAREN
 	{}
 	| var
-	{ string tempVar = makeTemps();
-		string temp = ". ";
-		temp += tempVar;
-		temp += "\n";
-	 	temp += "= " + tempVar + ", ";
-		temp += $1;
-		temp += "\n";
-		$$.code = returnVal(temp);
-	  $$.variables = returnVal(tempVar);
-	}
+		{
+			string tempVar = makeTemps();
+			string temp = ". ";
+			temp += tempVar;
+			temp += "\n";
+		 	temp += "= " + tempVar + ", ";
+			temp += $1;
+			temp += "\n";
+			$$.code = returnVal(temp);
+		  $$.variables = returnVal(tempVar);
+		}
 	| NUMBER
-	{ string tempVar = makeTemps();
-		string temp = ". ";
-		temp += tempVar;
-		temp += "\n";
-	 	temp += "= " + tempVar + ", ";
-		temp += to_string($1);
-		temp += "\n";
-		$$.variables = returnVal(tempVar);
-		$$.code = returnVal(temp);
-}
+		{ string tempVar = makeTemps();
+			string temp = ". ";
+			temp += tempVar;
+			temp += "\n";
+		 	temp += "= " + tempVar + ", ";
+			temp += to_string($1);
+			temp += "\n";
+			$$.variables = returnVal(tempVar);
+			$$.code = returnVal(temp);
+		}
 	| L_PAREN expression R_PAREN
-	{}
+		{}
 	| ident L_PAREN expressions R_PAREN
-	{ string temp = $3.code;
-		temp += "param ";
-	  temp += $3.variables;
-		temp += "\n";
-		string tempVar = makeTemps();
-		temp += ". " + tempVar + "\n";
-		temp += "call ";
-		temp += $1;
-		temp += ", " + tempVar + "\n";
-		$$.code = returnVal(temp);
-		$$.variables = returnVal(tempVar);
-
-	}
+		{
+			string temp = $3.code;
+			temp += "param ";
+		  temp += $3.variables;
+			temp += "\n";
+			string tempVar = makeTemps();
+			temp += ". " + tempVar + "\n";
+			temp += "call ";
+			temp += $1;
+			temp += ", " + tempVar + "\n";
+			$$.code = returnVal(temp);
+			$$.variables = returnVal(tempVar);
+		}
 	;
 
 bool_exp: relation_and_exp
@@ -408,20 +442,33 @@ relation_expr: NOT expression comp expression
 		| NOT L_PAREN bool_exp R_PAREN
 		{}
 		| expression comp expression
-		{ string tempVar = makeTemps();
-			string temp = $1.code;
-		 	temp += $3.code;
-			temp += $2;
-			temp += " " + tempVar + ", " + string($1.variables) + ", " + string($3.variables);
-			$$.code = returnVal(temp);
-			$$.variables = returnVal(tempVar);
-		}
+			{
+				string tempVar = makeTemps();
+				string temp = $1.code;
+			 	temp += $3.code;
+				temp += ". " + tempVar + "\n";
+				temp += $2;
+				temp += " " + tempVar + ", " + string($1.variables) + ", " + string($3.variables) + "\n";
+				$$.code = returnVal(temp);
+				$$.variables = returnVal(tempVar);
+			}
 		| TRUE
-		{}
+			{
+				string temp = "1";
+		  	$$.code = returnVal(temp);
+				$$.variables = returnVal("");
+			}
 		| FALSE
-		{}
+			{
+				string temp ="0";
+				$$.code = returnVal(temp);
+				$$.variables = returnVal("");
+			}
 		| L_PAREN bool_exp R_PAREN
-		{}
+			{
+				$$.code = strdup($2.code);
+				$$.variables = ($2.variables);
+			}
 		;
 
 comp: EQ
@@ -456,7 +503,6 @@ int main(int argc, char ** argv)
    {
       yyin = stdin;
    }
-
    yyparse();
    return 1;
 }
@@ -485,7 +531,6 @@ char * returnVal(string temp){
 	return strdup(c);
 }
 
-
 void printMap(){
 	for(auto elem : symbol_table)
 	 {
@@ -500,11 +545,10 @@ void printMap(){
  }
 
  string makeLabel(){
-	string ret = "__label__" + to_string(num_temps);
+	string ret = "__label__" + to_string(num_label);
 	num_label++;
 	return ret;
  }
-
 
 void yyerror (const char * msg){
 	printf("Error in line %d %s\n", currLine, msg);
