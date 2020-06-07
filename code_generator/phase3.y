@@ -26,8 +26,9 @@ void printMap();
 string makeTemps();
 int num_temps = 0;
 string makeLabel();
+string calledFunctions = "";
 int num_label = 0;
-
+bool contFound = false;
 std::map<string, int> symbol_table; // 0 is integer, 1 as array //2 = function name
 
 %}
@@ -85,7 +86,24 @@ std::map<string, int> symbol_table; // 0 is integer, 1 as array //2 = function n
 %%
 prog_start: functions
        	   {
-						 printf("%s",$1);
+						char* str = returnVal(calledFunctions);
+		 				char *token = strtok(str, " ");
+		 			   while (token != NULL)
+		 			    {
+		 							if (checkMap(string(token)) == false){
+										string temp =  " Called function \"" + string(token) + "\" doesnt exists \n";
+						 				yyerror(returnVal(temp));
+									}
+		 				      token = strtok(NULL, " ");
+		 			    }
+						 if(checkMap("main") == false){
+							string temp =  " No main function exists \n";
+			 				yyerror(returnVal(temp));
+						 }
+						 if(no_error == true){
+							printf("%s",$1);
+						 }
+						 //printf("%s",$1);
 					 }
 	;
 
@@ -122,6 +140,11 @@ function: FUNCTION ident SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LO
 				    }
 					temp += $8;
 					temp += $11;
+					string state = $11;
+					if (state.find("continue") != string::npos) {
+						string temp =  " Continue is used outside a loop \n";
+						yyerror(returnVal(temp));
+					}
 					temp += "endfunc";
  				 	$$ = returnVal(temp);
 				}
@@ -166,14 +189,18 @@ declaration: identifier COLON INTEGER  //i,j,d,c : integer
 		 		}
 	     | identifier COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
 	     {
+				 if($5 <= 0){
+					string temp =  " Cannot declare array of size \"" + to_string($5) +  "\"\n";
+	 				yyerror(returnVal(temp));
+				 }
 				 char* str = $1.code;
 			 	char *token = strtok(str, " ");
 			 	string temp;
 				 while (token != NULL)
 				 {
-						 temp += ". [] ";
+						 temp += ".[] ";
 						 temp += token;
-						 addMap(token,0);
+						 addMap(token,1);
 						 temp += ", ";
 						 temp += to_string($5);
 						 temp += "\n";
@@ -182,15 +209,18 @@ declaration: identifier COLON INTEGER  //i,j,d,c : integer
 				$$ = returnVal(temp);
 		 }
 	     | identifier COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
-	     {
+	     {if($5 <= 0 || $8 <= 0){
+				string temp =  " Cannot declare array of size \"" + to_string($5) +  "\"\n";
+				yyerror(returnVal(temp));
+			 }
 				char* str = $1.code;
 			 char *token = strtok(str, " ");
 			 string temp;
 				while (token != NULL)
 				{
-						temp += ". [] ";
+						temp += ".[] ";
 						temp += token;
-						addMap(token,0);
+						addMap(token,1);
 						temp += ", ";
 						int num1 = $5;
 						int num2 = $8;
@@ -228,6 +258,7 @@ statements: /*epsilon*/
 			}
 	   |statement SEMICOLON statements
 	    { string temp = $1;
+				string state = $1;
 			temp +=  $3;
 			$$ = returnVal(temp);
 			}
@@ -239,9 +270,6 @@ statement: var ASSIGN expression
 				 temp += $3.code;
 				 if($1.varType == 1){
 					 temp += "[]= ";
-				 }
-				 else if($1.varType == 2){
-					 temp += "[][]= ";
 				 }
 				 else if($1.varType == 0){
 					 temp += "= ";
@@ -294,7 +322,6 @@ statement: var ASSIGN expression
 			 string labelWhile = makeLabel();
 			 string endWhile = makeLabel();
 			 string checkWhile = makeLabel();
-
 			 string temp = ": " + checkWhile + "\n";
 			 temp += boolWork;
 			 temp += "?:= " + labelWhile + ", " + boolVar + "\n";
@@ -303,24 +330,30 @@ statement: var ASSIGN expression
 			 temp += state;
 			 temp += ":= " + checkWhile + "\n";
 			 temp += ": " + endWhile + "\n";
+			 if(temp.find("continue") != string::npos){
+				 temp.replace(temp.find("continue"), 8, checkWhile);
+			 }
 			 $$ = returnVal(temp);
 		 }
 	   | DO BEGINLOOP statements ENDLOOP WHILE bool_exp
 	   { string boolWork = $6.code;
 			 string boolVar = $6.variables;
 			 string startLabel = makeLabel();
-
 			 string temp = ": " + startLabel + "\n";
 			 temp += $3;
+			 string state = $3;
 			 temp += boolWork;
 			 temp += "?:= " + startLabel + ", " + boolVar + "\n";
+			 if(temp.find("continue") != string::npos){
+				 temp.replace(temp.find("continue"), 8, startLabel);
+			 }
 			 $$ = returnVal(temp);
 		  }
 	   | FOR var ASSIGN NUMBER SEMICOLON bool_exp SEMICOLON var ASSIGN expression BEGINLOOP statements ENDLOOP
 	   {	string varCode = makeTemps();
 			 	string temp = ". " + varCode + "\n";
-				temp += "= " + varCode + ", " + to_string($4) + "\n";
-				temp += "= " +  string($2.variables) + ", " + varCode + "\n";
+				temp += ":= " + varCode + ", " + to_string($4) + "\n";
+				temp += ":= " +  string($2.variables) + ", " + varCode + "\n";
 				string loopLabel = makeLabel();
 				string stateLabel = makeLabel();
 				temp += ": " + loopLabel + "\n";
@@ -332,42 +365,62 @@ statement: var ASSIGN expression
 				temp += ":= " + endLabel + "\n";
 				temp += ": " + stateLabel + "\n";
 				temp += $12;
+				string state = $12;
 				temp += $10.code;
-				temp += "= " + string($8.variables) + ", " + string($10.variables) + "\n";
+				temp += ":= " + string($8.variables) + ", " + string($10.variables) + "\n";
 				temp += ":= " + loopLabel + "\n";
 				temp += ": " + endLabel + "\n";
+				if(temp.find("continue") != string::npos){
+ 				 temp.replace(temp.find("continue"), 8, loopLabel);
+ 			 	}
 				$$ = returnVal(temp);
 		 }
 	   | READ vars
-		 {  //check if var is int or arr based on that print [] .
+		 {
 			 char* str = $2.variables;
-			 char *token = strtok(str, " ");
-			 string temp;
+			 char *token = strtok(str, "|");
+			 string temp = $2.code;
 			 while (token != NULL)
 			 {
+				 if($2.varType == 1){
+					 temp += ".[]< ";
+				 }
+				 else{
 					 temp += ".< ";
+				 }
 					 temp += token;
 					 temp += "\n";
-					 token = strtok(NULL, " ");
+					 token = strtok(NULL, "|");
 				 }
 				 $$ = returnVal(temp);
-		 }
+	   }
 	   | WRITE vars
 	   {
 			 char* str = $2.variables;
-			 char *token = strtok(str, " ");
-			 string temp;
+			 char *token = strtok(str, "|");
+			 string temp = $2.code;
 			 while (token != NULL)
 			 {
+				 if($2.varType == 1){
+					 if(strstr (token, ",") ){
+						 temp += ".[]> ";
+					 }
+					 else{
+						 temp += ".> ";
+					 }
+
+				 }
+				 else{
 					 temp += ".> ";
+				 }
 					 temp += token;
 					 temp += "\n";
-					 token = strtok(NULL, " ");
+					 token = strtok(NULL, "|");
 				 }
 				 $$ = returnVal(temp);
 	   }
 	   | CONTINUE
-	   { string temp = "continue\n";
+	   { string temp = ":= continue\n";
 		 	$$ = returnVal(temp);
 	  	}
 	   |
@@ -385,7 +438,7 @@ vars: var COMMA vars
 				temp += $3.code;
 				$$.code = returnVal(temp);
 				temp = $1.variables;
-				temp += " ";
+				temp += "|";
 				temp += $3.variables;
 				$$.variables = returnVal(temp);
 			}
@@ -399,8 +452,21 @@ vars: var COMMA vars
 var: ident
 		{
 			if(checkMap(string($1)) == false){
-				string temp =  "used variable " + string($1) +  " was not previously declared.\n";
+				string temp =  " Used variable \"" + string($1) +  "\" was not previously declared.\n";
 				yyerror(returnVal(temp));
+			}
+			else{
+				int x = symbol_table.find(string($1))->second;
+				if(x != 0){
+					if(x == 1){
+						string temp =  " Used array variable \"" + string($1) +  "\" is missing an index.\n";
+						yyerror(returnVal(temp));
+					}
+					else if(x == 2){
+						string temp =  " Variable name \"" + string($1) +  "\" defined as a function\n";
+						yyerror(returnVal(temp));
+					}
+				}
 			}
 			string temp = $1;
 			$$.variables = returnVal(temp);
@@ -408,7 +474,25 @@ var: ident
 			$$.varType = 0;
 		}
 		| ident L_SQUARE_BRACKET expression R_SQUARE_BRACKET
-		{ string temp = $3.code;
+		{ if(checkMap(string($1)) == false){
+			string temp =  " Used variable \"" + string($1) +  "\" was not previously declared.\n";
+			yyerror(returnVal(temp));
+		}
+		else{
+			int x = symbol_table.find(string($1))->second;
+			if(x != 1){
+				if(x == 0){
+					string temp =  " Used variable \"" + string($1) +  "\" is an integer.\n";
+					yyerror(returnVal(temp));
+				}
+				else if(x == 2){
+					string temp =  " Variable name \"" + string($1) +  "\" defined as a function\n";
+					yyerror(returnVal(temp));
+				}
+			}
+		}
+
+			string temp = $3.code;
 			$$.code = returnVal(temp);
 			temp = $1;
 			temp += ", ";
@@ -417,16 +501,22 @@ var: ident
 			$$.varType = 1;
 		}
 		| ident L_SQUARE_BRACKET expression R_SQUARE_BRACKET L_SQUARE_BRACKET expression R_SQUARE_BRACKET
-		{ string temp = $3.code;
+		{
+			string temp = $3.code;
 			temp += $6.code;
-			$$.code = returnVal(temp);
-			temp = $1;
-			temp += ", ";
+			string tempVar3 = makeTemps();
+			temp += ". " + tempVar3 + "\n";
+			temp += "* " + tempVar3 + ", ";
 			temp += $3.variables;
 			temp += ", ";
 			temp += $6.variables;
+			temp += "\n";
+			$$.code = returnVal(temp);
+			temp = $1;
+			temp += ", ";
+			temp += tempVar3;
 			$$.variables = returnVal(temp);
-			$$.varType = 2;
+			$$.varType = 1;
 		 }
 ;
 
@@ -524,9 +614,6 @@ term: 	SUB var
 	if($2.varType == 1){
 		temp += "-[] ";
 	}
-	else if($2.varType == 2){
-		temp += "-[][] ";
-	}
 	else if($2.varType == 0){
 		temp += "- ";
 	}
@@ -610,6 +697,7 @@ term: 	SUB var
 			string tempVar = makeTemps();
 			temp += ". " + tempVar + "\n";
 			temp += "call ";
+			calledFunctions += " " + string($1);
 			temp += $1;
 			temp += ", " + tempVar + "\n";
 			$$.code = returnVal(temp);
@@ -756,11 +844,23 @@ bool checkMap(string name){
 
 void addMap(string name, int num){
 	if(symbol_table.find(name) != symbol_table.end()){
-		cout << "Exists already" << endl;
+		int x = symbol_table.find(name)->second;
+		string temp =  " variable name \"" + name +  "\" is already defined as an ";
+
+		if(x == 0){
+			temp += "integer\n";
+		}
+		else if(x == 1){
+			temp += "array\n";
+		}
+		else{
+			temp += "function name\n";
+		}
+		yyerror(returnVal(temp));
+
 	}
-	else{
 		symbol_table.insert(pair<string, int>(name, num));
-	}
+
 
 }
 
@@ -789,5 +889,6 @@ void printMap(){
  }
 
 void yyerror (const char * msg){
-	printf("Error in line %d %s\n", currLine, msg);
+	printf("Error in line %d:%s\n", currLine, msg);
+	no_error = false;
 }
