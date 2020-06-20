@@ -7,8 +7,8 @@ Use the `make` command to compile the lexical analyzer
 
 Use `make clean` before running `make`
 
-Use case 1:  `./bison`
+Use case 1:  `./parser`
 [then enter any strings]
 
-Use case 2: `./bison [filename]`
+Use case 2: `./parser [filename]`
 [Input file required]
